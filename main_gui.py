@@ -10,9 +10,12 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import work_with_data as wd
-
+from sklearn import svm
+from sklearn.preprocessing import scale
+from sklearn.decomposition import PCA
 
 class MainWindow(QMainWindow):
 
@@ -75,15 +78,36 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.main_frame)
 
     def plot(self):
-
         try:
-            self.teacher = wd.correctdata(self.teacher)
-            self.teacher1 = self.teacher[self.teacher['Anomaly'] == True]
+            # fit the model
+            self.teacher['Energy'] = scale(self.teacher['Energy'])
+            self.data['Energy'] = scale(self.data['Energy'])
 
-            self.axes.plot(self.teacher['DateTime'], self.teacher['Energy'], color='b', label="Normal")
-            self.axes.plot(self.teacher1['DateTime'], self.teacher1['Energy'], color='r', label="Anomaly")
+            clf = svm.OneClassSVM(kernel="rbf")
+            clf.fit(self.teacher)
+            y_pred_train = clf.predict(self.teacher)
+            y_pred_test = clf.predict(self.data)
+            #y_pred_outliers = clf.predict(X_outliers)
+            n_error_train = y_pred_train[y_pred_train == -1].size
+            n_error_test = y_pred_test[y_pred_test == -1].size
+           # n_error_outliers = y_pred_outliers[y_pred_outliers == 1].size
+            print(y_pred_train)
+            print('\n\n')
+            print(y_pred_test)
+
+            #self.axes.plot(self.data['DateTime'], self.data['Energy'], color='b', label="Normal")
+
             self.show()
             self.canvas.draw()
+            """
+            self.teacher = wd.ForData.correct_data(self.teacher)
+            #self.teacher1 = self.teacher[self.teacher['Anomaly'] == True]
+
+            self.axes.plot(self.teacher['DateTime'], self.teacher['Energy'], color='b', label="Normal")
+            #self.axes.plot(self.teacher1['DateTime'], self.teacher1['Energy'], color='r', label="Anomaly")
+            self.show()
+            self.canvas.draw()
+            """
         except  Exception:
             self.statusBar().showMessage('Exception: %s' % sys.exc_info()[0], 2000)
 
@@ -92,19 +116,25 @@ class MainWindow(QMainWindow):
 
     def on_load_teacherfile(self):
         print("load teacher")
-        file_choices = "CSV (*.csv)|*.csv"
-        path = (QFileDialog.getOpenFileName(self, 'Save file', '',file_choices))
-        self.teacher = pd.read_csv(path[0], ';', nrows=671)
-        self.statusBar().showMessage('ВЖУХ an file %s has opened' % path[0], 2000)
+        try:
+            file_choices = "CSV (*.csv)|*.csv"
+            path = (QFileDialog.getOpenFileName(self, 'Save file', '',file_choices))
+            self.teacher = pd.read_csv(path[0], ';', nrows=671)
+            self.teacher = wd.ForData.correct_data(self.teacher)
+            self.statusBar().showMessage('ВЖУХ an file %s has opened' % path[0], 2000)
+        except  Exception:
+            self.statusBar().showMessage('Exception: %s' % sys.exc_info()[0], 2000)
 
     def on_load_file(self):
         print("load file")
-        """
-        file_choices = "CSV (*.csv)|*.csv"
-        path = (QFileDialog.getOpenFileName(self, 'Save file', '',file_choices))
-        self.teacher = pd.read_csv(path[0], ';', nrows=671)
-        self.statusBar().showMessage('VJUH an file %s has opened' % path[0], 2000)
-        """
+        try:
+            file_choices = "CSV (*.csv)|*.csv"
+            path = (QFileDialog.getOpenFileName(self, 'Save file', '',file_choices))
+            self.data = pd.read_csv(path[0], ';', nrows=671)
+            self.data = wd.ForData.correct_data(self.data)
+            self.statusBar().showMessage('VJUH an file %s has opened' % path[0], 2000)
+        except  Exception:
+            self.statusBar().showMessage('Exception: %s' % sys.exc_info()[0], 2000)
 
     def on_fileQuit(self):
         self.close()
