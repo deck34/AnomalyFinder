@@ -10,12 +10,12 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
-import numpy as np
+
 import pandas as pd
 import work_with_data as wd
-from sklearn import svm
-from sklearn.preprocessing import scale
-from sklearn.decomposition import PCA
+import function as f
+import numpy as np
+import string
 
 class MainWindow(QMainWindow):
 
@@ -23,7 +23,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.left = 100
         self.top = 100
-        self.title = 'PyQt5 application'
+        self.title = 'Anomaly Finder'
         self.width = 1110
         self.height = 620
 
@@ -58,7 +58,7 @@ class MainWindow(QMainWindow):
 
         self.axes = self.fig.add_subplot(111)
         self.axes.tick_params(labelsize='small')
-        self.axes.set_title('PyQt Matplotlib')
+        self.axes.set_title('Novelty Detection')
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setParent(self.main_frame)
         self.toolbar = NavigationToolbar(self.canvas, self.main_frame)
@@ -79,26 +79,32 @@ class MainWindow(QMainWindow):
 
     def plot(self):
         try:
-            # fit the model
-            self.teacher['Energy'] = scale(self.teacher['Energy'])
-            self.data['Energy'] = scale(self.data['Energy'])
+            outlier_fraction = 0.07
+            X_tr, X_ts, X_ts_o, xx, yy, Z = f.SVM.clf(self.teacher,self.data,outlier_fraction)
 
-            clf = svm.OneClassSVM(kernel="rbf")
-            clf.fit(self.teacher)
-            y_pred_train = clf.predict(self.teacher)
-            y_pred_test = clf.predict(self.data)
-            #y_pred_outliers = clf.predict(X_outliers)
-            n_error_train = y_pred_train[y_pred_train == -1].size
-            n_error_test = y_pred_test[y_pred_test == -1].size
-           # n_error_outliers = y_pred_outliers[y_pred_outliers == 1].size
-            print(y_pred_train)
-            print('\n\n')
-            print(y_pred_test)
 
-            #self.axes.plot(self.data['DateTime'], self.data['Energy'], color='b', label="Normal")
+            n_inliers = int((1. - outlier_fraction) * np.shape(X_tr)[0])
+            n_outliers = int(outlier_fraction * np.shape(X_tr)[0])
+
+            # plot the line, the points, and the nearest vectors to the plane
+            self.axes.contour(xx, yy, Z, levels=np.linspace(Z.min(), 0, 7))
+            a = self.axes.contour(xx, yy, Z, levels=[0], linewidths=2, colors='darkred')
+            self.axes.contour(xx, yy, Z, levels=[0, Z.max()], colors='palevioletred')
+
+            s = 30
+            b1 = self.axes.scatter(wd.ForData.to_list(X_tr,0), wd.ForData.to_list(X_tr,1), c='white', s=s)
+            b2 = self.axes.scatter(wd.ForData.to_list(X_ts,0), wd.ForData.to_list(X_ts,1), c='blueviolet', s=s)
+            b3 = self.axes.scatter(wd.ForData.to_list(X_ts_o,0), wd.ForData.to_list(X_ts_o,1), c='red', s=s)
+
+            self.axes.legend([b1, b2, b3],
+                       ['inliers_train', 'inliers_test', 'outliers_test'],
+                       loc="upper left",
+                       prop=matplotlib.font_manager.FontProperties(size=11))
+
 
             self.show()
             self.canvas.draw()
+
             """
             self.teacher = wd.ForData.correct_data(self.teacher)
             #self.teacher1 = self.teacher[self.teacher['Anomaly'] == True]
@@ -119,7 +125,7 @@ class MainWindow(QMainWindow):
         try:
             file_choices = "CSV (*.csv)|*.csv"
             path = (QFileDialog.getOpenFileName(self, 'Save file', '',file_choices))
-            self.teacher = pd.read_csv(path[0], ';', nrows=671)
+            self.teacher = pd.read_csv(path[0], ';', nrows=67) #671
             self.teacher = wd.ForData.correct_data(self.teacher)
             self.statusBar().showMessage('ВЖУХ an file %s has opened' % path[0], 2000)
         except  Exception:
@@ -130,7 +136,7 @@ class MainWindow(QMainWindow):
         try:
             file_choices = "CSV (*.csv)|*.csv"
             path = (QFileDialog.getOpenFileName(self, 'Save file', '',file_choices))
-            self.data = pd.read_csv(path[0], ';', nrows=671)
+            self.data = pd.read_csv(path[0], ';', nrows=67)
             self.data = wd.ForData.correct_data(self.data)
             self.statusBar().showMessage('VJUH an file %s has opened' % path[0], 2000)
         except  Exception:

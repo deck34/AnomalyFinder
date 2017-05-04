@@ -25,8 +25,14 @@ if __name__ == '__main__':
     del teacher['\t']
     teacher['Energy'] = teacher['Energy'].str.replace(',','.')
     teacher['Energy'] = pd.to_numeric(teacher['Energy'], errors='coerce')
-    X_tr = np.zeros((66, 2))
 
+    data = pd.read_csv('data/Building0teacher2.csv', ';', nrows=67, header=0)
+    del data['\t']
+    data['Energy'] = data['Energy'].str.replace(',', '.')
+    data['Energy'] = pd.to_numeric(data['Energy'], errors='coerce')
+
+
+    X_tr = np.zeros((67, 2))
     data_tr = np.array(teacher['Energy'])
     result_string_tr = represent(data_tr)
     result_string_tr = list(result_string_tr)
@@ -34,12 +40,8 @@ if __name__ == '__main__':
         X_tr[i][0]= teacher['DateTime'][i]
         X_tr[i][1]= teacher['Energy'][i]
 
-    data = pd.read_csv('data/Building0teacher2.csv', ';', nrows=67,header=0)
-    del data['\t']
-    data['Energy'] = data['Energy'].str.replace(',','.')
-    data['Energy'] = pd.to_numeric(data['Energy'], errors='coerce')
-    X_ts = np.zeros((66, 2))
 
+    X_ts = np.zeros((67, 2))
     data_ts = np.array(data['Energy'])
     result_string_ts = represent(data_ts)
     result_string_ts = list(result_string_ts)
@@ -53,10 +55,8 @@ if __name__ == '__main__':
     clf.fit(X_tr)
     y_pred_train = clf.predict(X_tr)
     y_pred_test = clf.predict(X_ts)
-    #y_pred_outliers = clf.predict(X_outliers)
     n_error_train = y_pred_train[y_pred_train == -1].size
     n_error_test = y_pred_test[y_pred_test == -1].size
-    #n_error_outliers = y_pred_outliers[y_pred_outliers == 1].size
 
     OUTLIER_FRACTION = 0.07
     dist_to_border = clf.decision_function(X_ts).ravel()
@@ -69,6 +69,7 @@ if __name__ == '__main__':
     n_inliers = int((1. - OUTLIER_FRACTION) * np.shape(X_tr)[0])
     n_outliers = int(OUTLIER_FRACTION * np.shape(X_tr)[0])
     Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
+    print(Z)
     Z = Z.reshape(xx.shape)
 
     plt.title("Novelty Detection")
@@ -81,8 +82,8 @@ if __name__ == '__main__':
     b2 = plt.scatter(X_ts[is_inlier == 1, 0], X_ts[is_inlier == 1, 1], c='blueviolet', s=s)
     b3 = plt.scatter(X_ts[is_inlier == 0, 0], X_ts[is_inlier == 0, 1], c='gold', s=s)
     outliers = X_ts[is_inlier == 0]
-    for i in outliers:
-        print(int(i[0]),' ',result_string_ts[int(i[0])],' ', i[1])
+    #for i in outliers:
+
     #c = plt.scatter(X_outliers[:, 0], X_outliers[:, 1], c='gold', s=s)
     plt.axis('tight')
     plt.xlim((-1, 75))
@@ -91,7 +92,6 @@ if __name__ == '__main__':
                ['learned decision function', 'inliers_train', 'inliers_test','outliers_test'],
                loc="upper left",
                prop=matplotlib.font_manager.FontProperties(size=11))
-    #plt.xlabel("error train: %d/200 ; errors novel regular: %d/40 ; ""errors novel abnormal: %d/40"% (n_error_train, n_error_test, n_error_outliers))
     plt.show()
 
 """
