@@ -1,13 +1,14 @@
 from sklearn import svm
 from scipy import stats
 import numpy as np
+import pandas as pd
 
 class SVM:
     def prepare_data(df):
         data_mas = np.zeros((np.shape(df['Energy'])[0], 2))
 
         for i in range(0, np.shape(data_mas)[0]):
-            data_mas[i][0] = df['DateTime'][i]
+            data_mas[i][0] = i #df['DateTime'][i]
             data_mas[i][1] = df['Energy'][i]
         return data_mas
 
@@ -27,9 +28,15 @@ class SVM:
         threshold = stats.scoreatpercentile(dist_to_border,
                                             100 * outlier_fraction)
         is_inlier = dist_to_border > threshold
-        xx, yy = np.meshgrid(np.linspace(0, 70, 700), np.linspace(0, 50, 500))
-        Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
-        Z = Z.reshape(xx.shape)
+
+        df_test.insert(2, 'is_outlier', False)
+
+        for i in test_data[is_inlier == 0, 0]:
+            df_test.loc[i,'is_outlier'] = True
+
+        #xx, yy = np.meshgrid(np.linspace(0, 70, 700), np.linspace(0, 50, 500))
+        #Z = clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
+        #Z = Z.reshape(xx.shape)
 
 
-        return train_data, test_data[is_inlier == 1], test_data[is_inlier == 0], xx, yy, Z
+        return df_test

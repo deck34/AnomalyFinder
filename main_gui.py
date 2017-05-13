@@ -76,44 +76,38 @@ class MainWindow(QMainWindow):
 
         self.main_frame.setLayout(hbox)
         self.setCentralWidget(self.main_frame)
+        self.statusBar().showMessage('Welcome!', 2000)
 
     def plot(self):
         try:
             outlier_fraction = 0.07
-            X_tr, X_ts, X_ts_o, xx, yy, Z = f.SVM.clf(self.teacher,self.data,outlier_fraction)
-
-
-            n_inliers = int((1. - outlier_fraction) * np.shape(X_tr)[0])
-            n_outliers = int(outlier_fraction * np.shape(X_tr)[0])
+            data_train = f.SVM.clf(self.teacher,self.data,outlier_fraction)
+            #n_inliers = int((1. - outlier_fraction) * np.shape(data_train[data_train.is_outlier == False])[0])
+            #n_outliers = int(outlier_fraction * np.shape(data_train[data_train.is_outlier == True])[0])
 
             # plot the line, the points, and the nearest vectors to the plane
-            self.axes.contour(xx, yy, Z, levels=np.linspace(Z.min(), 0, 7))
-            a = self.axes.contour(xx, yy, Z, levels=[0], linewidths=2, colors='darkred')
-            self.axes.contour(xx, yy, Z, levels=[0, Z.max()], colors='palevioletred')
+            #self.axes.contour(xx, yy, Z, levels=np.linspace(Z.min(), 0, 7))
+            #a = self.axes.contour(xx, yy, Z, levels=[0], linewidths=2, colors='darkred')
+            #self.axes.contour(xx, yy, Z, levels=[0, Z.max()], colors='palevioletred')
 
-            s = 30
-            b1 = self.axes.scatter(wd.ForData.to_list(X_tr,0), wd.ForData.to_list(X_tr,1), c='white', s=s)
-            b2 = self.axes.scatter(wd.ForData.to_list(X_ts,0), wd.ForData.to_list(X_ts,1), c='blueviolet', s=s)
-            b3 = self.axes.scatter(wd.ForData.to_list(X_ts_o,0), wd.ForData.to_list(X_ts_o,1), c='red', s=s)
+            b1 = self.axes.plot(self.teacher['DateTime'], self.teacher['Energy'], c='black', label = "train")
 
-            self.axes.legend([b1, b2, b3],
-                       ['inliers_train', 'inliers_test', 'outliers_test'],
-                       loc="upper left",
-                       prop=matplotlib.font_manager.FontProperties(size=11))
+            b2 = self.axes.plot(data_train['DateTime'], data_train['Energy'], color='green', label="test")
 
+            outlier = data_train[data_train.is_outlier == True]
+            Xouniques, Xo = np.unique(outlier['DateTime'], return_index=True)
+
+            b3 = self.axes.scatter(Xouniques, outlier['Energy'], color='red', s=30)
+            self.axes.legend([b3],
+                             ['outliers_test'],
+                             loc="upper left",
+                             prop=matplotlib.font_manager.FontProperties(size=11))
+            self.axes.set_ylabel('Energy')
+            self.axes.set_xlabel('DateTime')
 
             self.show()
             self.canvas.draw()
 
-            """
-            self.teacher = wd.ForData.correct_data(self.teacher)
-            #self.teacher1 = self.teacher[self.teacher['Anomaly'] == True]
-
-            self.axes.plot(self.teacher['DateTime'], self.teacher['Energy'], color='b', label="Normal")
-            #self.axes.plot(self.teacher1['DateTime'], self.teacher1['Energy'], color='r', label="Anomaly")
-            self.show()
-            self.canvas.draw()
-            """
         except  Exception:
             self.statusBar().showMessage('Exception: %s' % sys.exc_info()[0], 2000)
 
@@ -124,7 +118,7 @@ class MainWindow(QMainWindow):
         print("load teacher")
         try:
             file_choices = "CSV (*.csv)|*.csv"
-            path = (QFileDialog.getOpenFileName(self, 'Save file', '',file_choices))
+            path = (QFileDialog.getOpenFileName(self, 'Load teacher file', '',file_choices))
             self.teacher = pd.read_csv(path[0], ';', nrows=67) #671
             self.teacher = wd.ForData.correct_data(self.teacher)
             self.statusBar().showMessage('ВЖУХ an file %s has opened' % path[0], 2000)
@@ -135,7 +129,7 @@ class MainWindow(QMainWindow):
         print("load file")
         try:
             file_choices = "CSV (*.csv)|*.csv"
-            path = (QFileDialog.getOpenFileName(self, 'Save file', '',file_choices))
+            path = (QFileDialog.getOpenFileName(self, 'Load test file', '',file_choices))
             self.data = pd.read_csv(path[0], ';', nrows=67)
             self.data = wd.ForData.correct_data(self.data)
             self.statusBar().showMessage('VJUH an file %s has opened' % path[0], 2000)
