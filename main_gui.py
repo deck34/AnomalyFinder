@@ -37,7 +37,8 @@ class MainWindow(QMainWindow):
         self.file_menu.addAction("&Load file", self.on_load_file, QtCore.Qt.CTRL + QtCore.Qt.Key_T)
         self.file_menu.addAction("&Load teacher file", self.on_load_teacherfile, QtCore.Qt.CTRL + QtCore.Qt.Key_Y)
         self.file_menu.addSeparator()
-        self.file_menu.addAction("&Save plot", self.on_save_plot, QtCore.Qt.CTRL + QtCore.Qt.Key_S)
+        self.file_menu.addAction("&Save plot", self.on_save_plot, QtCore.Qt.CTRL + QtCore.Qt.Key_P)
+        self.file_menu.addAction("&Save marked", self.on_save_marked, QtCore.Qt.CTRL + QtCore.Qt.Key_S)
         self.file_menu.addSeparator()
         self.file_menu.addAction('&Quit', self.on_fileQuit, QtCore.Qt.CTRL + QtCore.Qt.Key_Q)
         self.menuBar().addMenu(self.file_menu)
@@ -81,6 +82,7 @@ class MainWindow(QMainWindow):
     def plot(self):
         try:
             outlier_fraction = 0.07
+            pattern_length = 2
             data_train = f.SVM.clf(self.teacher,self.data,outlier_fraction)
             #n_inliers = int((1. - outlier_fraction) * np.shape(data_train[data_train.is_outlier == False])[0])
             #n_outliers = int(outlier_fraction * np.shape(data_train[data_train.is_outlier == True])[0])
@@ -107,6 +109,8 @@ class MainWindow(QMainWindow):
 
             self.show()
             self.canvas.draw()
+            self.data_marked = f.add_sym_str(data_train)
+            f.find_pattern(self.data_marked,pattern_length)
 
         except  Exception:
             self.statusBar().showMessage('Exception: %s' % sys.exc_info()[0], 2000)
@@ -152,6 +156,16 @@ class MainWindow(QMainWindow):
             self.canvas.print_figure(filename = path[0], format = 'png', dpi=self.dpi)
             self.statusBar().showMessage('Saved to %s' % path[0], 2000)
 
+    def on_save_marked(self):
+        print("save file")
+        try:
+            file_choices = "CSV (*.csv)|*.csv"
+            path = (QFileDialog.getSaveFileName(self, 'Save marked file', '',file_choices))
+            if path:
+                self.data_marked.to_csv('marked.csv')
+            self.statusBar().showMessage('VJUH an file %s has saved' % path[0], 2000)
+        except  Exception:
+            self.statusBar().showMessage('Exception: %s' % sys.exc_info()[0], 2000)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
