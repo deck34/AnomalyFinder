@@ -34,20 +34,24 @@ def count_(list,str):
 def find_pattern(data,length):
     string = ''.join(data['Energy_sym'])
     indexes = data[data.is_outlier == True].index.tolist()
+    #d_p = {}
+   # d_v = {}
     list_patterns = []
+    #data.insert(4, 'Pattern', '')
+    #data.insert(5, 'Percent', 0)
     for i in indexes:
         if i-length >= 0:
             tmp = []
             for j in range(i-length,i):
                 tmp.append(data['Energy_sym'][j])
+            #d_p[i] = ''.join(tmp)
             list_patterns.append(''.join(tmp))
     percents = []
     for pattern in list_patterns:
         percents.append(count_(list_patterns,pattern)/len(re.findall(pattern,string))*100)
+        #d_v[i] = count_(list_patterns,pattern)/len(re.findall(pattern,string))*100
 
-    print(string)
-    print(list_patterns)
-    print(percents)
+    return indexes,list_patterns,percents
 
 class SVM:
     def prepare_data(df):

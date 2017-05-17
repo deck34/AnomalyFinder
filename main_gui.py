@@ -58,23 +58,40 @@ class MainWindow(QMainWindow):
         self.fig = Figure(figsize=(10, 6), dpi=self.dpi)
 
         self.axes = self.fig.add_subplot(111)
-        self.axes.tick_params(labelsize='small')
+        self.axes.tick_params(labelsize=8)
         self.axes.set_title('Novelty Detection')
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setParent(self.main_frame)
         self.toolbar = NavigationToolbar(self.canvas, self.main_frame)
 
-        hbox = QHBoxLayout()
+        self.sp_i = QSpinBox()
+        self.sp_i.setMinimum(2)
+        self.sp_i.setMaximum(10)
 
+        self.lbl_i = QLabel("Pattern length")
+
+        hbox = QHBoxLayout()
+        vbox_ = QVBoxLayout()
+
+        for w in [self.button,self.lbl_i,self.sp_i]:
+            vbox_.addWidget(w)
+            vbox_.setAlignment(w, Qt.AlignTop)
+
+        hbox.addLayout(vbox_)
+        hbox.setAlignment(vbox_, Qt.AlignTop)
+        """
         for w in [self.button]:
             hbox.addWidget(w)
             hbox.setAlignment(w, Qt.AlignTop)
+        """
+
+        self.tb = QPlainTextEdit()
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.canvas)
         vbox.addWidget(self.toolbar)
         hbox.addLayout(vbox)
-
+        hbox.addWidget(self.tb)
         self.main_frame.setLayout(hbox)
         self.setCentralWidget(self.main_frame)
         self.statusBar().showMessage('Welcome!', 2000)
@@ -82,7 +99,7 @@ class MainWindow(QMainWindow):
     def plot(self):
         try:
             outlier_fraction = 0.07
-            pattern_length = 2
+            pattern_length = self.sp_i.value()
             data_train = f.SVM.clf(self.teacher,self.data,outlier_fraction)
             #n_inliers = int((1. - outlier_fraction) * np.shape(data_train[data_train.is_outlier == False])[0])
             #n_outliers = int(outlier_fraction * np.shape(data_train[data_train.is_outlier == True])[0])
@@ -92,25 +109,29 @@ class MainWindow(QMainWindow):
             #a = self.axes.contour(xx, yy, Z, levels=[0], linewidths=2, colors='darkred')
             #self.axes.contour(xx, yy, Z, levels=[0, Z.max()], colors='palevioletred')
 
-            b1 = self.axes.plot(self.teacher['DateTime'], self.teacher['Energy'], c='black', label = "train")
+            self.data_marked = f.add_sym_str(data_train)
+            indexes, pattern, percents = f.find_pattern(self.data_marked, pattern_length)
+            self.tb.setPlainText('')
+            for i in range(0, len(indexes)):
+                self.tb.appendPlainText('Anomaly in date %s with percent %f\nPattern: \'%s\' \n' % ( self.data_marked['DateTime'][indexes[i]].strftime("%d-%m-%Y %H:%M"), percents[i], pattern[i]))
+
+           # b1 = self.axes.plot(self.teacher['DateTime'], self.teacher['Energy'], c='black', label = "train")
 
             b2 = self.axes.plot(data_train['DateTime'], data_train['Energy'], color='green', label="test")
-
             outlier = data_train[data_train.is_outlier == True]
             Xouniques, Xo = np.unique(outlier['DateTime'], return_index=True)
 
             b3 = self.axes.scatter(Xouniques, outlier['Energy'], color='red', s=30)
-            self.axes.legend([b3],
-                             ['outliers_test'],
-                             loc="upper left",
-                             prop=matplotlib.font_manager.FontProperties(size=11))
+            #self.axes.legend([b3],
+            #                 ['outliers_test'],
+            #                 loc="upper left",
+            #                 prop=matplotlib.font_manager.FontProperties(size=11))
             self.axes.set_ylabel('Energy')
             self.axes.set_xlabel('DateTime')
-
+            #self.axes.set_yticklabels(self.data_marked['Energy_sym'])
             self.show()
             self.canvas.draw()
-            self.data_marked = f.add_sym_str(data_train)
-            f.find_pattern(self.data_marked,pattern_length)
+
 
         except  Exception:
             self.statusBar().showMessage('Exception: %s' % sys.exc_info()[0], 2000)
