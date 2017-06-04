@@ -23,7 +23,7 @@ class Patterns:
         dmax = max(data)
         ddelta = dmax - dmin
         dstep = ddelta / Patterns.ALPHABET_LEN
-        # normalize input data and present as symbol string
+        # нормализация входных данных и символьное представление
         representer = lambda d: \
             Patterns.ALPHABET[int(np.round(((d - dmin) / ddelta) * Patterns.ALPHABET_LEN))]
         return ''.join(map(representer, data))
@@ -79,7 +79,6 @@ class Patterns:
                 tmp = []
                 for j in range(i-length,i):
                     tmp.append(data['Energy_sym'][j])
-                #d_p[i] = ''.join(tmp)
                 list_patterns.append(''.join(tmp))
         percents = []
         for pattern in list_patterns:

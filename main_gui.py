@@ -13,6 +13,37 @@ import pandas as pd
 import function as f
 import numpy as np
 
+class TableModel(QAbstractTableModel):
+    def __init__(self, datain, headerdata, parent=None):
+        """
+        Args:
+            datain: a list of lists\n
+            headerdata: a list of strings
+        """
+        QAbstractTableModel.__init__(self, parent)
+        self.arraydata = datain
+        self.headerdata = headerdata
+
+    def rowCount(self, parent):
+        return len(self.arraydata)
+
+    def columnCount(self, parent):
+        if len(self.arraydata) > 0:
+            return len(self.arraydata[0])
+        return 0
+
+    def data(self, index, role):
+        if not index.isValid():
+            return QVariant()
+        elif role != Qt.DisplayRole:
+            return QVariant()
+        return QVariant(self.arraydata[index.row()][index.column()])
+
+    def headerData(self, col, orientation, role):
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            return QVariant(self.headerdata[col])
+        return QVariant()
+
 class MainWindow(QMainWindow):
 
     def __init__(self):
@@ -20,7 +51,7 @@ class MainWindow(QMainWindow):
         self.left = 100
         self.top = 100
         self.title = 'Anomaly Finder'
-        self.width = 1110
+        self.width = 1310
         self.height = 620
 
         self.setWindowTitle(self.title)
@@ -80,14 +111,28 @@ class MainWindow(QMainWindow):
         hbox.addLayout(vbox_)
         hbox.setAlignment(vbox_, Qt.AlignTop)
 
+        self.lbl_tb = QLabel("Аномальные паттерны")
         self.tb = QPlainTextEdit()
         self.tb.setReadOnly(True)
+
+        vbox_tb = QVBoxLayout()
+        for w in [self.lbl_tb,self.tb]:
+            vbox_tb.addWidget(w)
+
+        self.lbl_tbl = QLabel("Таблица соответствия значений")
+        self.table = QTableView()
+
+        vbox_tbl = QVBoxLayout()
+        for w in [self.lbl_tbl, self.table]:
+            vbox_tbl.addWidget(w)
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.canvas)
         vbox.addWidget(self.toolbar)
         hbox.addLayout(vbox)
-        hbox.addWidget(self.tb)
+        hbox.addLayout(vbox_tb)
+        hbox.addLayout(vbox_tbl)
+
         self.main_frame.setLayout(hbox)
         self.setCentralWidget(self.main_frame)
         self.statusBar().showMessage('Добро пожаловать!', 2000)
@@ -115,6 +160,19 @@ class MainWindow(QMainWindow):
                                         self.data_marked['DateTime'][indexes[i]].strftime("%d-%m-%Y %H:%M"), percents[i], pattern[i]))
 
                 # b1 = self.axes.plot(self.teacher['DateTime'], self.teacher['Energy'], c='black', label = "train")
+            lst = data_train['Energy'].sort_values().drop_duplicates().values.tolist()
+            lst_sym = f.Patterns.represent(lst)
+            lst_sym = list(lst_sym)
+
+            tabledata = []
+            for i in range(0, len(lst)):
+                tabledata.append([str(lst[i]),str(lst_sym[i])])
+
+            header = ['Num','Sym']
+
+            model = TableModel(tabledata,header,self)
+            self.table.setModel(model)
+            self.table.update()
 
             b2 = self.axes.plot(data_train['DateTime'], data_train['Energy'], color='green', label="test")
             outlier = data_train[data_train.is_outlier == True]
