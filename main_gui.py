@@ -9,9 +9,9 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
-import pandas as pd
-import function as f
-import numpy as np
+from anomaly import *
+from pattern import *
+from data_modify import *
 
 class TableModel(QAbstractTableModel):
     def __init__(self, datain, headerdata, parent=None):
@@ -99,12 +99,20 @@ class MainWindow(QMainWindow):
         self.sp_i.setMinimum(2)
         self.sp_i.setMaximum(10)
 
+        self.sp_of = QDoubleSpinBox()
+        self.sp_of.setSingleStep(0.01)
+        self.sp_of.setDecimals(2)
+        self.sp_of.setValue(0.5)
+        self.sp_of.setMinimum(0)
+        self.sp_of.setMaximum(10)
+
         self.lbl_i = QLabel("Длина паттерна")
+        self.lbl_of = QLabel("Коэффициент поиска аномалии")
 
         hbox = QHBoxLayout()
         vbox_ = QVBoxLayout()
 
-        for w in [self.button,self.lbl_i,self.sp_i]:
+        for w in [self.button,self.lbl_i,self.sp_i,self.lbl_of,self.sp_of]:
             vbox_.addWidget(w)
             vbox_.setAlignment(w, Qt.AlignTop)
 
@@ -141,54 +149,45 @@ class MainWindow(QMainWindow):
         #В этой функции выполняется обучение, поик аномальных точек и аномальных паттернов во тестовом временном ряду
 
         try:
-            outlier_fraction = 0.07
+            outlier_fraction = self.sp_of.value()
             pattern_length = self.sp_i.value()
-            data_train = f.SVM.clf(self.teacher, self.data, outlier_fraction)
-            # n_inliers = int((1. - outlier_fraction) * np.shape(data_train[data_train.is_outlier == False])[0])
-            # n_outliers = int(outlier_fraction * np.shape(data_train[data_train.is_outlier == True])[0])
 
-            # plot the line, the points, and the nearest vectors to the plane
-            # self.axes.contour(xx, yy, Z, levels=np.linspace(Z.min(), 0, 7))
-            # a = self.axes.contour(xx, yy, Z, levels=[0], linewidths=2, colors='darkred')
-            # self.axes.contour(xx, yy, Z, levels=[0, Z.max()], colors='palevioletred')
+            clf_complete = True
 
-            self.data_marked = f.Patterns.add_sym_str(data_train)
-            indexes, pattern, percents = f.Patterns.find_pattern(self.data_marked, pattern_length)
-            self.tb.setPlainText('')
-            for i in range(0, len(indexes)):
-                self.tb.appendPlainText('Anomaly in date %s with percent %f\nPattern: \'%s\' \n' % (
-                                        self.data_marked['DateTime'][indexes[i]].strftime("%d-%m-%Y %H:%M"), percents[i], pattern[i]))
+            data_train = SVM.clf(self.teacher, self.data, outlier_fraction)
 
-                # b1 = self.axes.plot(self.teacher['DateTime'], self.teacher['Energy'], c='black', label = "train")
-            lst = data_train['Energy'].sort_values().drop_duplicates().values.tolist()
-            lst_sym = f.Patterns.represent(lst)
-            lst_sym = list(lst_sym)
+            if clf_complete:
+                if list(data_train).count('Energy_sym') == 0:
+                    self.data_marked = Patterns.add_sym_str(data_train)
 
-            tabledata = []
-            for i in range(0, len(lst)):
-                tabledata.append([str(lst[i]),str(lst_sym[i])])
+                indexes, pattern, percents = Patterns.find_pattern(self.data_marked, pattern_length)
+                self.tb.setPlainText('')
+                for i in range(0, len(indexes)):
+                    self.tb.appendPlainText('Anomaly in date %s with percent %f\nPattern: \'%s\' \n' % (
+                                            self.data_marked['DateTime'][indexes[i]].strftime("%d-%m-%Y %H:%M"), percents[i], pattern[i]))
 
-            header = ['Num','Sym']
+                lst = data_train['Energy'].sort_values().drop_duplicates().values.tolist()
+                lst_sym = Patterns.represent(lst)
+                lst_sym = list(lst_sym)
 
-            model = TableModel(tabledata,header,self)
-            self.table.setModel(model)
-            self.table.update()
+                tabledata = []
+                for i in range(0, len(lst)):
+                    tabledata.append([str(lst[i]),str(lst_sym[i])])
 
-            b2 = self.axes.plot(data_train['DateTime'], data_train['Energy'], color='green', label="test")
-            outlier = data_train[data_train.is_outlier == True]
-            Xouniques, Xo = np.unique(outlier['DateTime'], return_index=True)
+                header = ['Num','Sym']
 
-            b3 = self.axes.scatter(Xouniques, outlier['Energy'], color='red', s=30)
-            # self.axes.legend([b3],
-            #                 ['outliers_test'],
-            #                 loc="upper left",
-            #                 prop=matplotlib.font_manager.FontProperties(size=11))
-            self.axes.set_ylabel('Energy')
-            self.axes.set_xlabel('DateTime')
-            # self.axes.set_yticklabels(self.data_marked['Energy_sym'])
-            self.show()
-            self.canvas.draw()
+                model = TableModel(tabledata,header,self)
+                self.table.setModel(model)
+                self.table.update()
 
+                self.axes.clear()
+                self.axes.plot(data_train['DateTime'], data_train['Energy'], color='green', label="test")
+                outlier = data_train[data_train.is_outlier == True]
+                Xouniques, Xo = np.unique(outlier['DateTime'], return_index=True)
+                self.axes.scatter(Xouniques, outlier['Energy'], color='red', s=30)
+                self.axes.set_ylabel('Energy')
+                self.axes.set_xlabel('DateTime')
+                self.canvas.draw()
 
         except  Exception:
             self.statusBar().showMessage('Exception: %s' % sys.exc_info()[0], 2000)
@@ -221,10 +220,13 @@ class MainWindow(QMainWindow):
         try:
             file_choices = "CSV (*.csv)|*.csv"
             path = (QFileDialog.getOpenFileName(self, 'Загрузка обучающей выборки', '',file_choices))
-            self.teacher = pd.read_csv(path[0], ';', nrows=67) #671
-            self.teacher = f.ForData.correct_data(self.teacher)
-            self.statusBar().showMessage('Файл %s загружен' % path[0], 2000)
+            if len(path[0]) != 0:
+                self.teacher = pd.read_csv(path[0], ';') #671
+                self.teacher = ForData.correct_data(self.teacher)
+                self.statusBar().showMessage('Файл %s загружен' % path[0], 2000)
         except  Exception:
+            QMessageBox.about(self, "Ошибка",
+                              """Неверный формат файла.""")
             self.statusBar().showMessage('Exception: %s' % sys.exc_info()[0], 2000)
 
     def on_load_file(self):
@@ -233,10 +235,13 @@ class MainWindow(QMainWindow):
         try:
             file_choices = "CSV (*.csv)|*.csv"
             path = (QFileDialog.getOpenFileName(self, 'Загрузка тестового файла', '',file_choices))
-            self.data = pd.read_csv(path[0], ';', nrows=67)
-            self.data = f.ForData.correct_data(self.data)
-            self.statusBar().showMessage('Файл %s открыт' % path[0], 2000)
+            if len(path[0]) != 0:
+                self.data = pd.read_csv(path[0], ';')
+                self.data = ForData.correct_data(self.data)
+                self.statusBar().showMessage('Файл %s открыт' % path[0], 2000)
         except  Exception:
+            QMessageBox.about(self, "Ошибка",
+                              """Неверный формат файла.""")
             self.statusBar().showMessage('Exception: %s' % sys.exc_info()[0], 2000)
 
     def on_fileQuit(self):
