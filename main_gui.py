@@ -146,48 +146,45 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage('Добро пожаловать!', 2000)
 
     def search(self):
-        #В этой функции выполняется обучение, поик аномальных точек и аномальных паттернов во тестовом временном ряду
+        #В этой функции выполняется обучение, поиск аномальных точек и аномальных паттернов во тестовом временном ряду
 
         try:
             outlier_fraction = self.sp_of.value()
             pattern_length = self.sp_i.value()
 
-            clf_complete = True
-
             data_train = SVM.clf(self.teacher, self.data, outlier_fraction)
 
-            if clf_complete:
-                if list(data_train).count('Energy_sym') == 0:
-                    self.data_marked = Patterns.add_sym_str(data_train)
+            if list(data_train).count('Energy_sym') == 0:
+                self.data_marked = Patterns.add_sym_str(data_train)
 
-                indexes, pattern, percents = Patterns.find_pattern(self.data_marked, pattern_length)
-                self.tb.setPlainText('')
-                for i in range(0, len(indexes)):
-                    self.tb.appendPlainText('Anomaly in date %s with percent %f\nPattern: \'%s\' \n' % (
-                                            self.data_marked['DateTime'][indexes[i]].strftime("%d-%m-%Y %H:%M"), percents[i], pattern[i]))
+            indexes, pattern, percents = Patterns.find_pattern(self.data_marked, pattern_length)
+            self.tb.setPlainText('')
+            for i in range(0, len(indexes)):
+                self.tb.appendPlainText('Anomaly in date %s with percent %f\nPattern: \'%s\' \n' % (
+                                        self.data_marked['DateTime'][indexes[i]].strftime("%d-%m-%Y %H:%M"), percents[i], pattern[i]))
 
-                lst = data_train['Energy'].sort_values().drop_duplicates().values.tolist()
-                lst_sym = Patterns.represent(lst)
-                lst_sym = list(lst_sym)
+            lst = data_train['Energy'].sort_values().drop_duplicates().values.tolist()
+            lst_sym = Patterns.represent(lst)
+            lst_sym = list(lst_sym)
 
-                tabledata = []
-                for i in range(0, len(lst)):
-                    tabledata.append([str(lst[i]),str(lst_sym[i])])
+            tabledata = []
+            for i in range(0, len(lst)):
+                tabledata.append([str(lst[i]),str(lst_sym[i])])
 
-                header = ['Num','Sym']
+            header = ['Num','Sym']
 
-                model = TableModel(tabledata,header,self)
-                self.table.setModel(model)
-                self.table.update()
+            model = TableModel(tabledata,header,self)
+            self.table.setModel(model)
+            self.table.update()
 
-                self.axes.clear()
-                self.axes.plot(data_train['DateTime'], data_train['Energy'], color='green', label="test")
-                outlier = data_train[data_train.is_outlier == True]
-                Xouniques, Xo = np.unique(outlier['DateTime'], return_index=True)
-                self.axes.scatter(Xouniques, outlier['Energy'], color='red', s=30)
-                self.axes.set_ylabel('Energy')
-                self.axes.set_xlabel('DateTime')
-                self.canvas.draw()
+            self.axes.clear()
+            self.axes.plot(data_train['DateTime'], data_train['Energy'], color='green', label="test")
+            outlier = data_train[data_train.is_outlier == True]
+            Xouniques, Xo = np.unique(outlier['DateTime'], return_index=True)
+            self.axes.scatter(Xouniques, outlier['Energy'], color='red', s=30)
+            self.axes.set_ylabel('Energy')
+            self.axes.set_xlabel('DateTime')
+            self.canvas.draw()
 
         except  Exception:
             self.statusBar().showMessage('Exception: %s' % sys.exc_info()[0], 2000)
